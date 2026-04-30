@@ -14,116 +14,115 @@ metadata:
 
 ## Overview
 
-Export Hermes Agent chat sessions as readable dialogue-format Markdown documents.
-The user strongly prefers **对话模式** (Q&A dialogue style) over technical summaries.
+Export chat sessions from **Hermes**, **Claude Code**, and **Codex** as readable
+dialogue-format Markdown documents. Self-contained Python script, no dependencies
+beyond Python 3.8+ stdlib.
+
 Default save location: Windows Desktop (`/mnt/c/Users/12174/Desktop/`).
 
 ## When to Use
 
 - User says "导出对话", "export chat", "保存对话", "导出聊天记录"
 - User wants to save the current conversation as a file
-- User wants to backup or review past sessions
+- User wants to backup sessions from Hermes, Claude Code, or Codex
+- User wants to review past sessions across all tools
 
 ## Quick Reference
 
 | Action | Command |
 |--------|---------|
-| Export current session | Run the export script with current session ID |
-| Export specific session | Run with `--session-id <id>` |
-| Export all sessions | Run with `--all` |
-| Custom output path | Run with `--output /path/to/file.md` |
+| Export most recent (all tools) | `--recent 1` |
+| Export from specific tool | `--tool hermes\|claude\|codex\|all` |
+| Export specific session | `--session-id <id>` |
+| List all sessions | `--list` |
+| Custom output path | `--output /path/to/file.md` |
+| Include tool calls | `--tools-calls` |
 
 ## Step-by-Step Procedure
 
 ### 1. Export Current Session (most common)
 
-When the user says "导出对话" without specifying which session:
-
 ```bash
-# Get the current session ID from the environment
-# ${HERMES_SESSION_ID} is automatically replaced by Hermes
-
-# Run the export script
 python3 ~/.hermes/skills/productivity/auto-export-chat/scripts/export_chat.py \
-  --session-id "${HERMES_SESSION_ID}" \
+  --recent 1 \
   --output "/mnt/c/Users/12174/Desktop/对话记录_$(date +%Y%m%d_%H%M%S).md"
 ```
 
-If `${HERMES_SESSION_ID}` is not available, use `session_search` (no query) to find
-the most recent session, then export that.
+This auto-detects the most recent session from all tools (Hermes, Claude, Codex).
 
-### 2. Export with Custom Name
-
-If the user provides a filename:
+### 2. Export from a Specific Tool
 
 ```bash
+# Hermes only
 python3 ~/.hermes/skills/productivity/auto-export-chat/scripts/export_chat.py \
-  --session-id "${HERMES_SESSION_ID}" \
-  --output "/mnt/c/Users/12174/Desktop/用户指定的名称.md"
+  --tool hermes --recent 1
+
+# Claude Code only
+python3 ~/.hermes/skills/productivity/auto-export-chat/scripts/export_chat.py \
+  --tool claude --recent 1
+
+# Codex only
+python3 ~/.hermes/skills/productivity/auto-export-chat/scripts/export_chat.py \
+  --tool codex --recent 1
 ```
 
-### 3. Export a Past Session
-
-Use `session_search` to find the session, then:
+### 3. List All Available Sessions
 
 ```bash
-python3 ~/.hermes/skills/productivity/auto-export-chat/scripts/export_chat.py \
-  --session-id "<session_id>" \
-  --output "/mnt/c/Users/12174/Desktop/对话记录_<topic>.md"
+python3 ~/.hermes/skills/productivity/auto-export-chat/scripts/export_chat.py --list
 ```
 
-### 4. Export All Sessions (backup)
+### 4. Export a Specific Session by ID
 
 ```bash
 python3 ~/.hermes/skills/productivity/auto-export-chat/scripts/export_chat.py \
-  --all \
+  --session-id "20260501_021329_69e93b"
+```
+
+### 5. Export All Sessions (backup)
+
+```bash
+python3 ~/.hermes/skills/productivity/auto-export-chat/scripts/export_chat.py \
+  --tool all --recent 999 \
   --output "/mnt/c/Users/12174/Desktop/全部对话备份_$(date +%Y%m%d).md"
 ```
 
-## Output Format (对话模式)
+## Supported Tools
 
-The exported file uses Q&A dialogue format:
+| Tool | Storage Location | Detection |
+|------|-----------------|-----------|
+| Hermes | `~/.hermes/state.db` | `hermes sessions export` CLI |
+| Claude Code | `~/.claude/projects/**/*.jsonl` | Direct JSONL parsing |
+| Codex | `~/.codex/sessions/**/*.jsonl` | Direct JSONL parsing |
+
+## Output Format (对话模式)
 
 ```markdown
 # 对话记录
 
-**日期:** 2026-05-01
-**Session ID:** 20260501_020738_fe4466
-**来源:** cli
+**工具:** Claude Code
+**日期:** 2026-04-28 17:01:35
+**Session ID:** 8cc13c39-4358-482b-827f-5461d97a8163
+**模型:** claude-sonnet-4
 
 ---
 
-**👤 用户:** 你好，帮我安装 ComfyUI
+**👤 用户:** 你好
 
-**🤖 助手:** 好的，让我先检查一下你的环境...
-
-**👤 用户:** 装好了吗？
-
-**🤖 助手:** 是的，已经安装完成！
+**🤖 助手:** 你好！有什么可以帮你的？
 ```
-
-- Tool calls are collapsed to a brief note (e.g. `[调用工具: terminal]`)
-- Tool results are omitted unless they contain the assistant's visible response
-- Only `user` and `assistant` (visible) messages are included
-- Reasoning/thinking content is excluded
 
 ## Common Pitfalls
 
-1. **Session ID not found.** If the current session just started, it may not have
-   an ID yet. Use `session_search` to find recent sessions instead.
+1. **Session ID not found.** Use `--list` to see all available sessions across all tools.
 
-2. **Database is `state.db`, not `sessions.db`.** The actual DB file is
-   `~/.hermes/state.db`. The script handles this automatically.
+2. **Database is `state.db`, not `sessions.db`.** The script handles this automatically.
 
-2. **CJK filename issues.** The script handles Chinese filenames correctly on
-   WSL/Windows. No special encoding needed.
+3. **Desktop path.** Default assumes Windows user `12174`. Adjust if needed.
 
-3. **Large sessions.** Sessions with 500+ messages may produce large files.
-   The script handles this without issues.
+4. **Claude Code subagent sessions** are automatically excluded from the listing.
 
-4. **Desktop path.** The default path assumes Windows user `12174`.
-   If the path doesn't exist, the script falls back to `~/Desktop/` or the
-   current directory.
+5. **Codex UUID parsing.** The script correctly extracts full UUIDs from rollout filenames.
 
 ## Verification
 
