@@ -2,11 +2,13 @@
 
 导出 Hermes / Claude Code / Codex 对话记录为 Markdown
 
-## 一句话安装
+## 安装
 
 ```bash
 git clone https://github.com/Xhswd/hermes-auto-export-chat.git /tmp/_exp && mkdir -p ~/.hermes/skills/productivity/ && mv /tmp/_exp ~/.hermes/skills/productivity/auto-export-chat && echo done
 ```
+
+##或者和Agent说一嘴
 
 ## 用法
 
